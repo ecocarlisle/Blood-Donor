@@ -1,8 +1,6 @@
-############################
 # DRIVEN DATA 
 #
-# Compettion: Predict Blood Donations
-# TEAM: Jon Carlisle & Joshua Meek
+# Predict Blood Donations
 ############################
 require(xgboost)
 library(caret)
@@ -37,8 +35,7 @@ par(mfrow = c(1, 1))
 boxplot(var1 ~ Made.Donation.in.March.2007, notch = TRUE, col = "grey",ylab = "inca", main = "Boxplot",boxwex = 0.5, varwidth = TRUE)
 plot(Months.since.Last.Donation)
 
-# Months.since.Last.Donation transformed
-# note, not sold on this transformation
+# Months.since.Last.Donation,
 par <- par(mfrow = c(3, 1))
 var1 = sqrt(Months.since.Last.Donation)
 hist(var1, col = "grey", main = "R default", ylab = "Frequency",freq = FALSE)
@@ -47,6 +44,9 @@ qqline(var1)
 par(mfrow = c(1, 1))
 boxplot(var1 ~ Made.Donation.in.March.2007, notch = TRUE, col = "grey",ylab = "inca", main = "Boxplot",boxwex = 0.5, varwidth = TRUE)
 
+table(Months.since.Last.Donation)
+blood$Months.since.Last.Donation <- ifelse(blood$Months.since.Last.Donation >40,39,blood$Months.since.Last.Donation)
+
 # Number.of.Donations
 par <- par(mfrow = c(3, 1))
 var1 = Number.of.Donations
@@ -54,7 +54,7 @@ hist(var1, col = "grey", main = "R default", ylab = "Frequency",freq = FALSE)
 qqnorm(var1)
 qqline(var1)
 par(mfrow = c(1, 1))
-boxplot(var1 ~ Made.Donation.in.March.2007, notch = TRUE, col = "grey",ylab = "Number.of.Donations", main = "Boxplot",boxwex = 0.5, varwidth = TRUE)
+boxplot(var1 ~ Made.Donation.in.March.2007, notch = TRUE, col = "grey",ylab = "inca", main = "Boxplot",boxwex = 0.5, varwidth = TRUE)
 
 # Total.Volume.Donated..c.c..
 par <- par(mfrow = c(3, 1))
@@ -72,22 +72,11 @@ hist(var1, col = "grey", main = "R default", ylab = "Frequency",freq = FALSE)
 qqnorm(var1)
 qqline(var1)
 par(mfrow = c(1, 1))
-boxplot(var1 ~ Made.Donation.in.March.2007, notch = TRUE, col = "grey",ylab = "First Donation", main = "Boxplot",boxwex = 0.5, varwidth = TRUE)
+boxplot(var1 ~ Made.Donation.in.March.2007, notch = TRUE, col = "grey",ylab = "Total.Volume.Donated..c.c..", main = "Boxplot",boxwex = 0.5, varwidth = TRUE)
 table(Months.since.First.Donation,Made.Donation.in.March.2007)
 
 #scatterplot
-pairs(cbind(blood.rate,Months.since.Last.Donation,Months.since.First.Donation,Total.Volume.Donated..c.c..,Number.of.Donations), gap = 0, panel = panel.smooth)
-
-# total volume over time
-blood$blood.rate <- Total.Volume.Donated..c.c../Months.since.First.Donation
-par <- par(mfrow = c(3, 1))
-var1 = blood.rate
-hist(var1, col = "grey", main = "R default", ylab = "Frequency",freq = FALSE)
-qqnorm(var1)
-qqline(var1)
-par(mfrow = c(1, 1))
-boxplot(var1 ~ Made.Donation.in.March.2007, notch = TRUE, col = "grey",ylab = "First Donation", main = "Boxplot",boxwex = 0.5, varwidth = TRUE)
-table(Months.since.First.Donation,Made.Donation.in.March.2007)
+pairs(cbind(Months.since.Last.Donation,Months.since.First.Donation,Total.Volume.Donated..c.c..,Number.of.Donations), gap = 0, panel = panel.smooth)
 
 #boxcox
 summary(blood)
@@ -98,12 +87,9 @@ boxcox(Months.since.First.Donation ~ Made.Donation.in.March.2007, data = data.bo
 
 # implement transformations based on 
 # what we see in EDA
-#blood$Months.since.Last.Donation <- sqrt(blood$Months.since.Last.Donation)
-blood$Number.of.Donations = log(Number.of.Donations)
+blood$Months.since.Last.Donation <- sqrt(blood$Months.since.Last.Donation)
+#blood.t$Number.of.Donations = log(Number.of.Donations)
 #blood.t$Total.Volume.Donated..c.c.. = log(Total.Volume.Donated..c.c..)
-table(Months.since.Last.Donation)
-blood$Months.since.Last.Donation <- ifelse(blood$Months.since.Last.Donation >40,39,blood$Months.since.Last.Donation)
-
 
 # let's look at training data
 #data.train <- blood.t[blood$Part=="Train",]
@@ -115,23 +101,19 @@ data.valid <- blood.t[(bound+1):nrow(blood.t), ]    #get validation set
 
 
 # set up data for analysis
-x.train <- data.train[,c(2:5,7)]
+x.train <- data.train[,2:5]
 c.train <- data.train[,6] # 2007.donations
 n.train.c <- length(c.train) # 288
 
 #data.valid <- blood.t[blood$Part=="Valid",]
-x.valid <- data.valid[,c(2:5,7)]
+x.valid <- data.valid[,2:5]
 c.valid <- data.valid[,6] # 2007 donations
 n.valid.c <- length(c.valid) # 288
 
 data.test <- read.csv("test.csv")
-data.test$blood.rate <- data.test$Total.Volume.Donated..c.c../data.test$Months.since.First.Donation
-data.test$Months.since.Last.Donation <- ifelse(data.test$Months.since.Last.Donation >40,39,data.test$Months.since.Last.Donation)
-data.test$Number.of.Donations = log(data.test$Number.of.Donations)
-
 #data.test$Total.Volume.Donated..c.c.. <- NULL
 n.test <- dim(data.test)[1] # 200
-x.test <- data.test[,c(2:6)]
+x.test <- data.test[,2:5]
 
 x.train.mean <- apply(x.train, 2, mean)
 x.train.sd <- apply(x.train, 2, sd)
@@ -155,9 +137,9 @@ data.test.std <- data.frame(x.test.std)
 library(MASS)
 
 #-------------------
-#   MODEL 1
+# LDA model 1
 #-------------------
-model.lda1 <- lda(Made.Donation.in.March.2007 ~ Months.since.Last.Donation + Number.of.Donations + blood.rate,
+model.lda1 <- lda(Made.Donation.in.March.2007 ~ Months.since.Last.Donation + Number.of.Donations, 
                   data.train.std.c) # include additMonths.since.First.Donationional terms on the fly using I()
 
 model.lda1
@@ -168,10 +150,7 @@ lda.class=pred.lda1$class
 #table(lda.class ,spring.valid$target)
 mean(lda.class==data.valid.std.c$Made.Donation.in.March.2007)
 
-#-------------------
-#   MODEL 2
-#-------------------
-model.lda2 <- lda(Made.Donation.in.March.2007 ~ Months.since.First.Donation + Months.since.Last.Donation + Number.of.Donations + blood.rate, 
+model.lda2 <- lda(Made.Donation.in.March.2007 ~ Months.since.First.Donation + Months.since.Last.Donation + Total.Volume.Donated..c.c.., 
                   data.train.std.c) # include additMonths.since.First.Donationional terms on the fly using I()
 
 model.lda2
@@ -183,11 +162,11 @@ lda.class=pred.lda2$class
 mean(lda.class==data.valid.std.c$Made.Donation.in.March.2007)
 
 submission <- data.frame(ID=data.test$X)
-post.pred <- predict(model.lda2, data.test.std,type="response")
+post.pred <- predict(model.lda1, data.test.std,type="response")
 submission$Donate <-post.pred$posterior[,2]
 
 cat("saving the submission file\n")
-write_csv(submission, "blood_lda6.csv")
+write_csv(submission, "blood_lda3.csv")
 
 ############################
 #  LOG
@@ -220,7 +199,7 @@ library(tree)
 #---------------
 donr.class=ifelse (c.train ==0,"No","Yes")
 data.train.std.c.tree =data.frame(data.train.std.c ,donr.class)
-model.tree1 =tree(donr.class ~ Number.of.Donations + Months.since.First.Donation +
+model.tree1 =tree(donr.class ~ Number.of.Donations + Total.Volume.Donated..c.c.. + Months.since.First.Donation +
                     Months.since.Last.Donation 
                   -Made.Donation.in.March.2007, data.train.std.c.tree )
 summary (model.tree1)
@@ -234,24 +213,24 @@ post.valid.tree1 = predict(model.tree1 ,data.valid.std.c.tree ,type ="class")
 table(post.valid.tree1 ,donr.class)
 #donr.class
 #post.valid.tree1  No Yes
-#No  235  59
-#Yes  24  28
-#pred_accuracy = (235+ 28) /346  = 0.7601156 correct predictions of donors
+              #No  222  25
+              #Yes  17  24
+#pred_accuracy = (222+ 24) /288  = .8541667 correct predictions of donors
 
 # prune the tree to see if reuslts improve
 set.seed(2)
 cv.blood = cv.tree(model.tree1 ,FUN=prune.misclass)
 cv.blood
 
-# the tree with 7 terminal nodes results
-# in lowest cross-validation error rate w/ 43 errors
+# the tree with 4 terminal nodes results
+# in lowest cross-validation error rate w/ 86 errors
 # plot the error rate
 par(mfrow =c(1,2))
 plot(cv.blood$size ,cv.blood$dev ,type="b")
-plot(cv.blood$k ,cv.blood$dev ,type="b")
+plot(cv.charity$k ,cv.blood$dev ,type="b")
 
 # prune the tree to obtain a 4 node tree
-prune.blood =prune.misclass (model.tree1 ,best=7)
+prune.blood =prune.misclass (model.tree1 ,best=4)
 plot(prune.blood)
 text(prune.blood ,pretty =0)
 
@@ -259,56 +238,43 @@ model.tree2=predict(prune.blood, data.valid.std.c.tree,type="class")
 table(model.tree2,donr.class)
 #donr.class
 #model.tree2  No Yes
-#No  235  59
-#Yes  24  28
-#pred_accuracy = (235 + 28) /346  = 0.7601156 correct predictions of donors
+        #No  223  28
+        #Yes  16  21
+#pred_accuracy = (223 + 28) /288  = .8715278 correct predictions of donors
 
 
-# write out the submission
- Made.Donation.in.March.2007=as.numeric(NA)
-# 
-# data.test.std.c.tree =data.frame(data.test.std,Made.Donation.in.March.2007)
-# submission <- data.frame(ID=data.test$X)
-# post.pred.tree <- predict(model.tree1, data.test.std.c.tree,type="class")
-# submission$Donate <-post.pred
-# 
-# cat("saving the submission file\n")
-# write_csv(submission, "blood_lda3.csv")
+###################
+# REgression Trees
+###################
+
+#To Do
 
 ########################
 #     BAGGING
 ########################
 library (randomForest)
 set.seed (1)
-model.bag1 =randomForest(Made.Donation.in.March.2007 ~ Number.of.Donations + 
-                           Months.since.First.Donation +
-                           Months.since.Last.Donation,
-                           data=data.train.std.c , importance =TRUE)
+model.bag1 =randomForest(Made.Donation.in.March.2007 ~.,data=data.train.std.c , importance =TRUE)
 model.bag1
-# Mean of squared residuals: 0.1519589
-# % Var explained: 11.94
+# Mean of squared residuals: 0.2115465
+# % Var explained: 0.93
 
 post.valid.bag1 = predict(model.bag1,newdata = data.valid.std.c )
 plot(post.valid.bag1,c.valid)
 abline (0,1)
 mean((post.valid.bag1-c.valid)^2)
-# [1] 0.1695435
-
-importance(model.bag1)
-varImpPlot (model.bag1)
+# [1] 0.1345902
 
 set.seed (1)
-model.bag2 =randomForest(Made.Donation.in.March.2007 ~Number.of.Donations + 
-                           Months.since.First.Donation +
-                           Months.since.Last.Donation,data=data.train.std.c , 
-                         mtry=3, ntree=25, importance =TRUE)
+model.bag2 =randomForest(Made.Donation.in.March.2007 ~.,data=data.train.std.c , 
+                         mtry=1, ntree=25)
 model.bag2
-#Mean of squared residuals:  0.1633521
-#% Var explained: 5.34
+#Mean of squared residuals: 0.2183862
+#% Var explained: -2.27
 
 post.valid.bag2 = predict(model.bag2,newdata = data.valid.std.c )
 mean((post.valid.bag2-c.valid)^2)
-# [1]  0.1798843
+# [1] 0.1396108
 
 set.seed (1)
 rf.blood = randomForest(Made.Donation.in.March.2007 ~.,data=data.train.std.c, 
@@ -316,62 +282,58 @@ rf.blood = randomForest(Made.Donation.in.March.2007 ~.,data=data.train.std.c,
 importance (rf.blood )
 varImpPlot (rf.blood )
 
- submission <- data.frame(ID=data.test$X)
- post.test.bag <- predict(model.bag1, data.test.std.c.tree,type="response")
- submission$Donate <- post.test.bag
- 
- cat("saving the submission file\n")
- write_csv(submission, "blood_bag2.csv")
- 
- ########################
- #         BOOSTING
- ########################
- library (gbm)
- set.seed (1)
- model.boo1 =gbm(Made.Donation.in.March.2007 ~ Months.since.First.Donation +
-                   Months.since.Last.Donation + Number.of.Donations,data=data.train.std.c, 
-                 distribution="bernoulli",
-                 n.trees =5000 , interaction.depth =4)
- summary(model.boo1)
- par(mfrow =c(1,2))
- plot(model.boo1,i="Months.since.First.Donation")
- plot(model.boo1,i="Number.of.Donations")
- 
- post.valid.boo1 = predict (model.boo1,newdata=data.valid.std.c,
-                            n.trees =5000)
- mean((post.valid.boo1 - c.valid)^2)
- # [1] 4.13389
- 
- # model 2
- model.boo2 = gbm(Made.Donation.in.March.2007 ~ Months.since.First.Donation +
-                    Months.since.Last.Donation + Number.of.Donations,data=data.train.std.c, 
-                  distribution="bernoulli",
-                  n.trees =5000 , interaction.depth = 2,shrinkage =0.001,
-                  verbose =F)
- 
- post.valid.boo2 = predict (model.boo2,newdata=data.valid.std.c,
-                            n.trees =5000)
- 
- mean((post.valid.boo2 - c.valid)^2)
- # [1] 3.880425
- 
- # model 3
- model.boo3 = gbm(Made.Donation.in.March.2007 ~ Months.since.First.Donation +
-                    Number.of.Donations,data=data.train.std.c, 
-                  distribution="bernoulli",
-                  n.trees =5000 , interaction.depth = 2,shrinkage =0.001,
-                  verbose =F)
- 
- post.valid.boo3 = predict (model.boo3,newdata=data.valid.std.c,
-                            n.trees =5000)
- 
- mean((post.valid.boo3 - c.valid)^2)
- 
- # build submission file
- submission <- data.frame(ID=data.test$X)
- post.test.boo <- predict(model.boo3, data.test.std,n.trees =5000, type="response")
- submission$Donate <- post.test.boo
- 
- cat("saving the submission file\n")
- write_csv(submission, "blood_boo3.csv")
- 
+########################
+#         BOOSTING
+########################
+library (gbm)
+set.seed (1)
+model.boo1 =gbm(Made.Donation.in.March.2007 ~ Months.since.First.Donation +
+                Months.since.Last.Donation + Number.of.Donations,data=data.train.std.c, 
+                distribution="bernoulli",
+                n.trees =5000 , interaction.depth =4)
+summary(model.boo1)
+par(mfrow =c(1,2))
+plot(model.boo1,i="Months.since.First.Donation")
+plot(model.boo1,i="Number.of.Donations")
+
+post.valid.boo1 = predict (model.boo1,newdata=data.valid.std.c,
+                           n.trees =5000)
+mean((post.valid.boo1 - c.valid)^2)
+# [1] 2.70933
+
+# model 2
+set.seed (1)
+model.boo2 = gbm(Made.Donation.in.March.2007 ~ Months.since.First.Donation +
+                  Months.since.Last.Donation + Number.of.Donations,data=data.train.std.c, 
+                distribution="bernoulli",
+                n.trees =5000 , interaction.depth = 3,shrinkage =0.01,
+                verbose =F)
+
+post.valid.boo2 = predict (model.boo2,newdata=data.valid.std.c,
+                           n.trees =5000)
+mean((post.valid.boo2 - c.valid)^2)
+# [1] 4.279558
+
+# select model.boo1 since it has maximum profit in the validation sample
+profit.boo2 <- cumsum(1*c.valid[order(post.valid.boo2, decreasing=T)])
+post.test.boo <- predict(model.boo2, data.test.std,n.trees =5000) # n.valid.c post probs
+
+# Oversampling adjustment for calculating number of mailings for test set
+n.donors.valid <- which.max(profit.boo2)
+tr.rate <- .1 # typical response rate is .1
+vr.rate <- .5 # whereas validation response rate is .5
+adj.test.1 <- (n.donors.valid/n.valid.c)/(vr.rate/tr.rate) # adjustment for mail yes
+adj.test.0 <- ((n.valid.c-n.donors.valid)/n.valid.c)/((1-vr.rate)/(1-tr.rate)) # adjustment for mail no
+adj.test <- adj.test.1/(adj.test.1+adj.test.0) # scale into a proportion
+n.donors.test <- round(n.test*adj.test, 0) # calculate number of mailings for test set
+
+cutoff.test <- sort(post.test.boo, decreasing=T)[n.donors.test+1] # set cutoff based on n.mail.valid
+chat.test <- ifelse(post.test.boo>cutoff.test, 1, 0) # mail to everyone above the cutoff
+table(chat.test) # classification table
+#   0    1 
+#   43 157
+# based on this model we'll mail to the 157 highest posterior probabilities
+
+# See below for saving chat.test into a file for submission
+ip <- data.frame(chat=chat.test) # data frame with two variables: chat and yhat
+write.csv(ip, file="blood_boo1.csv", row.names=FALSE) # use your initials for the file name
